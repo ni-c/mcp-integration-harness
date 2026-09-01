@@ -178,10 +178,23 @@ export async function startServer(
     callOptions: CallOptions = {}
   ): Promise<ToolResult> => {
     called.add(name);
-    const result = (await client.callTool({
-      name,
-      arguments: args,
-    })) as ToolResult;
+    let result: ToolResult;
+    try {
+      result = (await client.callTool({
+        name,
+        arguments: args,
+      })) as ToolResult;
+    } catch (error) {
+      // The same reasoning as at connect time, for the other moment a server
+      // can die: a crash mid-suite surfaces as a bare "Not connected" on the
+      // next call, while what actually happened is in the stderr captured
+      // since it started.
+      throw new Error(
+        `mcp-integration-harness: calling ${name} failed at the transport.\n` +
+          `${String(error)}\n\nThe server's stderr so far:\n` +
+          `${errors.join('') || '(nothing)'}`
+      );
+    }
     const failed = result.isError === true;
     if (failed !== (callOptions.expectError ?? false)) {
       const text = textOf(result);

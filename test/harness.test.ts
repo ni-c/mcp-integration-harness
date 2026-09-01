@@ -51,6 +51,38 @@ describe('driving a server over real stdio', () => {
     await harness.close();
   });
 
+  it('says what the server wrote when the server is gone', async () => {
+    // The other moment a server can die. A crash halfway through a suite
+    // surfaces on the *next* call as a bare "Not connected", which names
+    // neither the tool nor the reason — while the reason is in the stderr the
+    // harness has been collecting since it started. Closing the transport is
+    // the reproducible version of that: the client is disconnected either way.
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_GREETING: 'logged' },
+    });
+    await harness.close();
+
+    await expect(harness.call('say_hello')).rejects.toThrow(
+      /calling say_hello failed at the transport[\s\S]*starting with greeting=logged/
+    );
+  });
+
+  it('says so when a dead server left nothing behind either', async () => {
+    // The unhelpful case, spelled out: no stderr at all. "(nothing)" is a
+    // finding — it says the server did not fail, it vanished — where an empty
+    // line would read like the message was cut off.
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_SILENT: '1' },
+    });
+    await harness.close();
+
+    await expect(harness.call('say_hello')).rejects.toThrow(
+      /stderr so far:\n\(nothing\)/
+    );
+  });
+
   it('hands back the whole result when the parts are the point', async () => {
     // A cover, a QR code, an uploaded asset: tools whose answer is not text.
     // Reaching for `harness.client` instead would skip the coverage

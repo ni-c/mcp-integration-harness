@@ -23,9 +23,13 @@ const approval = createApproval({ server: 'tiny' });
 
 // Announced on stderr, like every server in this family, so a test can show the
 // harness captures the startup banner rather than losing it to the handshake.
-console.error(
-  `tiny: starting with greeting=${process.env.TINY_GREETING ?? '(unset)'}`
-);
+// TINY_SILENT is for the opposite case: a server that says nothing, so the
+// harness has to report the absence rather than an empty string.
+if (process.env.TINY_SILENT !== '1') {
+  console.error(
+    `tiny: starting with greeting=${process.env.TINY_GREETING ?? '(unset)'}`
+  );
+}
 
 server.registerTool(
   'say_hello',

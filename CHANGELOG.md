@@ -60,7 +60,10 @@ them calling all 62 tools of its server while always exiting 0.
 
 - `harness.stderr()`, captured from before the handshake. A server that dies
   while starting reports `Connection closed` and nothing else; the reason is on
-  stderr, so `startServer` attaches it to the error it throws.
+  stderr, so `startServer` attaches it to the error it throws — and so does
+  every later call, because a server that dies halfway through a suite reports
+  `Not connected` on the next tool call and names neither the tool nor the
+  reason.
 
 <!-- #endregion changelog -->
 
