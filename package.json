@@ -1,0 +1,66 @@
+{
+  "name": "mcp-integration-harness",
+  "version": "0.1.0",
+  "description": "Drive an MCP server over real stdio against a real backend, and prove every tool was exercised",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "integration-testing",
+    "end-to-end",
+    "testing"
+  ],
+  "license": "MIT",
+  "author": "Willi Thiel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ni-c/mcp-integration-harness.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ni-c/mcp-integration-harness/issues"
+  },
+  "homepage": "https://github.com/ni-c/mcp-integration-harness#readme",
+  "funding": "https://github.com/sponsors/ni-c",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "lint": "oxlint --deny-warnings && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0"
+  },
+  "dependencies": {
+    "mcp-internal-hosts": "^0.2.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/core": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@types/node": "^26.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "mcp-approval": "^0.7.0",
+    "oxlint": "^1.80.0",
+    "prettier": "^3.6.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "zod": "^4.4.3"
+  }
+}

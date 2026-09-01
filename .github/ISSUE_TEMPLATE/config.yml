@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/ni-c/mcp-integration-harness/discussions
+    about: Usage help, ideas that are not yet concrete requests
+  - name: Security vulnerability
+    url: https://github.com/ni-c/mcp-integration-harness/security/advisories/new
+    about: Please report vulnerabilities privately, never as a public issue

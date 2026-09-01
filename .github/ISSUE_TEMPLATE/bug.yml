@@ -1,0 +1,39 @@
+name: Bug report
+description: Something behaves wrongly or breaks
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 'mcp-integration-harness version'
+      placeholder: '0.1.0'
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: 'output of node --version'
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you called, with which arguments, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: A snippet that shows it
+      description: The smallest call that reproduces it. A failing test is ideal.
+      render: ts
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: >-
+        Errors or stderr. Please redact tokens, private keys, internal hostnames
+        and IPs — this issue is public.
+      render: text
