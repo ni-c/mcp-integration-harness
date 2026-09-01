@@ -14,6 +14,11 @@ export {
   type SkipReasons,
 } from './coverage.js';
 
-export { assertLoopback } from './loopback.js';
+export { assertLoopback, assertLoopbackHost } from './loopback.js';
 
-export { waitForHttp } from './wait.js';
+export {
+  waitForHttp,
+  waitForTcp,
+  type TcpWaitOptions,
+  type WaitOptions,
+} from './wait.js';

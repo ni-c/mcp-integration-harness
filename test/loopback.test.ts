@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertLoopback } from '../src/loopback.js';
+import { assertLoopback, assertLoopbackHost } from '../src/loopback.js';
 
 describe('the loopback guard', () => {
   it.each([
@@ -22,7 +22,7 @@ describe('the loopback guard', () => {
     // included. If this test ever goes green by being deleted, that is the
     // accident it was written to prevent.
     expect(() => assertLoopback('https://wiki.roamsys.com')).toThrow(
-      /refusing to run against wiki\.roamsys\.com/
+      /refusing to talk to wiki\.roamsys\.com/
     );
   });
 
@@ -35,7 +35,9 @@ describe('the loopback guard', () => {
     // register it.
     'http://127.example.com',
   ])('refuses %s', (url) => {
-    expect(() => assertLoopback(url)).toThrow(/refusing to run against/);
+    expect(() => assertLoopback(url)).toThrow(
+      /refusing to (run against|talk to)/
+    );
   });
 
   it('says what it wants when handed something that is not a URL', () => {
@@ -61,6 +63,22 @@ describe('the loopback guard', () => {
     // pointed at production".
     expect(() => assertLoopback('https://wiki.roamsys.com')).toThrow(
       /may only ever talk to a throwaway backend on this machine/
+    );
+  });
+});
+
+describe('the host-only guard', () => {
+  it('lets a loopback host through and refuses anything else', () => {
+    // Used by waitForTcp, where there is no URL to parse: an IMAP or SMTP
+    // port is a host and a number.
+    expect(() => assertLoopbackHost('127.0.0.1')).not.toThrow();
+    expect(() => assertLoopbackHost('::1')).not.toThrow();
+    expect(() => assertLoopbackHost('localhost')).not.toThrow();
+    expect(() => assertLoopbackHost('imap.roamsys.com')).toThrow(
+      /refusing to talk to imap\.roamsys\.com/
+    );
+    expect(() => assertLoopbackHost('10.10.1.2')).toThrow(
+      /refusing to talk to/
     );
   });
 });

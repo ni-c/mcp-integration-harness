@@ -98,7 +98,8 @@ accident.
 | `expectEveryToolExercised` | The three-way coverage assertion above                                          |
 | `toolCoverage`             | The same comparison without asserting, for printing the numbers                 |
 | `assertLoopback(url)`      | Throws unless the URL is on this machine                                        |
-| `waitForHttp(url, opts)`   | Polls until the backend is ready, and says what the last attempt got            |
+| `waitForHttp(url, opts)`   | Polls until an HTTP backend is ready, and says what the last attempt got        |
+| `waitForTcp(host, port)`   | The same for a backend that is not HTTP — IMAP, SMTP — optionally on a greeting |
 
 `elicit: 'accept' | 'decline' | 'cancel'` makes the harness declare the
 elicitation capability and answer the dialog, which is the path a real client

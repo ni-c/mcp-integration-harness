@@ -43,6 +43,14 @@ them calling all 62 tools of its server while always exiting 0.
   failure mode is the first tool call returning `ECONNREFUSED` — which reads
   like a bug in the tool.
 
+- `waitForTcp` — the same for a backend that does not speak HTTP. `fetch`
+  against an IMAP or SMTP port does not resolve: undici cannot parse the
+  greeting as an HTTP response, so it rejects, and `waitForHttp` would report a
+  timeout for a server that was ready in a second. Optionally waits for the
+  greeting itself rather than only the connection, because Docker publishes a
+  port before the process inside is listening on it — and its failure message
+  names that case, which is the one that costs the most time.
+
 - `harness.stderr()`, captured from before the handshake. A server that dies
   while starting reports `Connection closed` and nothing else; the reason is on
   stderr, so `startServer` attaches it to the error it throws.

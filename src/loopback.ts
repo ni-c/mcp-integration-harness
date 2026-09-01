@@ -1,7 +1,7 @@
 import { internalHostKind } from 'mcp-internal-hosts';
 
 /**
- * Refuses any backend URL that is not on this machine.
+ * Refuses any backend that is not on this machine.
  *
  * This is the one guard that matters more than the tests it protects. An
  * integration suite calls every tool, including the deletes, and the machine it
@@ -19,6 +19,18 @@ import { internalHostKind } from 'mcp-internal-hosts';
  * label. A prefix check on `127.` would also call `127.example.com` local, which
  * is a public hostname anyone can register.
  */
+export function assertLoopbackHost(host: string): void {
+  if (internalHostKind(host) !== 'loopback') {
+    throw new Error(
+      `mcp-integration-harness: refusing to talk to ${host} — the integration ` +
+        'suite calls every tool, deletes included, and may only ever talk to a ' +
+        'throwaway backend on this machine. Expected a loopback host; got one ' +
+        'that resolves somewhere else.'
+    );
+  }
+}
+
+/** {@link assertLoopbackHost}, for a backend addressed by URL. */
 export function assertLoopback(url: string): void {
   let parsed: URL;
   try {
@@ -32,7 +44,7 @@ export function assertLoopback(url: string): void {
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     // `new URL('localhost:3000')` succeeds: protocol `localhost:`, hostname
     // empty. Without this branch the next check rejects it for having no host,
-    // and the message reads "refusing to run against " with a hole where the
+    // and the message reads "refusing to talk to " with a hole where the
     // hostname should be — true, but no help at all to whoever forgot `http://`.
     throw new Error(
       `mcp-integration-harness: refusing to run against "${url}" — not an ` +
@@ -40,12 +52,5 @@ export function assertLoopback(url: string): void {
         'protocol is "localhost:", which is not the same thing as a backend.'
     );
   }
-  if (internalHostKind(parsed.hostname) !== 'loopback') {
-    throw new Error(
-      `mcp-integration-harness: refusing to run against ${parsed.hostname} — ` +
-        'the integration suite calls every tool, deletes included, and may only ' +
-        'ever talk to a throwaway backend on this machine. Expected a loopback ' +
-        'host; got a URL that resolves somewhere else.'
-    );
-  }
+  assertLoopbackHost(parsed.hostname);
 }
