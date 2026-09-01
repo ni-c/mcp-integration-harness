@@ -44,6 +44,11 @@ export interface CallOptions {
   expectError?: boolean;
 }
 
+export interface ToolResult {
+  content?: { type: string; text?: string; mimeType?: string; data?: string }[];
+  isError?: boolean;
+}
+
 export interface LiveHarness {
   client: Client;
   /**
@@ -58,6 +63,20 @@ export interface LiveHarness {
     args?: Record<string, unknown>,
     options?: CallOptions
   ): Promise<string>;
+  /**
+   * The same, returning the whole result rather than its text.
+   *
+   * For a tool that answers with an image or a resource — a cover, a QR code,
+   * an uploaded asset — where the parts are the point. Reaching for
+   * `harness.client` instead would skip the coverage bookkeeping, and the
+   * missing tool would then have to be added to `called` by hand, which is
+   * exactly the sort of thing that stops being done.
+   */
+  raw(
+    name: string,
+    args?: Record<string, unknown>,
+    options?: CallOptions
+  ): Promise<ToolResult>;
   /**
    * Drives both halves of the two-call token for one guarded tool.
    *
@@ -153,31 +172,38 @@ export async function startServer(
     );
   }
 
-  const call = async (
+  const raw = async (
     name: string,
     args: Record<string, unknown> = {},
     callOptions: CallOptions = {}
-  ): Promise<string> => {
+  ): Promise<ToolResult> => {
     called.add(name);
     const result = (await client.callTool({
       name,
       arguments: args,
-    })) as { content?: unknown; isError?: boolean };
+    })) as ToolResult;
     const failed = result.isError === true;
-    const text = textOf(result);
     if (failed !== (callOptions.expectError ?? false)) {
+      const text = textOf(result);
       throw new Error(
         callOptions.expectError
           ? `${name} was expected to fail and did not: ${text.slice(0, 500)}`
           : `${name} failed: ${text.slice(0, 500)}`
       );
     }
-    return text;
+    return result;
   };
+
+  const call = async (
+    name: string,
+    args: Record<string, unknown> = {},
+    callOptions: CallOptions = {}
+  ): Promise<string> => textOf(await raw(name, args, callOptions));
 
   return {
     client,
     call,
+    raw,
     prompts,
     called,
     stderr: () => errors.join(''),

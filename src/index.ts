@@ -5,6 +5,7 @@ export {
   type ElicitBehaviour,
   type LiveHarness,
   type StartServerOptions,
+  type ToolResult,
 } from './harness.js';
 
 export {

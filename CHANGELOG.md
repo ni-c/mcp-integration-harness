@@ -51,6 +51,13 @@ them calling all 62 tools of its server while always exiting 0.
   port before the process inside is listening on it — and its failure message
   names that case, which is the one that costs the most time.
 
+- `harness.raw`, for a tool whose answer is an image or a resource rather than
+  text — a cover, a QR code, an uploaded asset. Without it the only way to see
+  the parts is `harness.client`, which skips the coverage bookkeeping, so the
+  tool has to be added to `called` by hand. That is exactly the sort of thing
+  that stops being done, and it quietly weakens the one assertion this library
+  exists for.
+
 - `harness.stderr()`, captured from before the handshake. A server that dies
   while starting reports `Connection closed` and nothing else; the reason is on
   stderr, so `startServer` attaches it to the error it throws.

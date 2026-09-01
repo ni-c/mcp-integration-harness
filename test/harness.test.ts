@@ -51,6 +51,32 @@ describe('driving a server over real stdio', () => {
     await harness.close();
   });
 
+  it('hands back the whole result when the parts are the point', async () => {
+    // A cover, a QR code, an uploaded asset: tools whose answer is not text.
+    // Reaching for `harness.client` instead would skip the coverage
+    // bookkeeping, and the tool would then have to be added to `called` by
+    // hand — which is exactly the sort of thing that stops being done.
+    const harness = await startServer({ entry: TINY, env: {} });
+    const result = await harness.raw('mixed_content');
+    expect(result.content?.map((part) => part.type)).toEqual([
+      'text',
+      'image',
+      'text',
+    ]);
+    expect(harness.called.has('mixed_content')).toBe(true);
+    await harness.close();
+  });
+
+  it('applies expectError on the raw path too', async () => {
+    const harness = await startServer({ entry: TINY, env: {} });
+    const failed = await harness.raw('always_fails', {}, { expectError: true });
+    expect(failed.isError).toBe(true);
+    await expect(harness.raw('always_fails')).rejects.toThrow(
+      /always_fails failed: no/
+    );
+    await harness.close();
+  });
+
   it('joins the text parts and drops the rest', async () => {
     // Several servers in the family return an image alongside their text —
     // an uploaded asset, a QR code. Stringifying a base64 blob into the value

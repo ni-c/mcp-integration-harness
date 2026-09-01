@@ -92,6 +92,7 @@ accident.
 | -------------------------- | ------------------------------------------------------------------------------- |
 | `startServer(options)`     | Spawns `dist/index.js` over real stdio and returns a `LiveHarness`              |
 | `harness.call(name, args)` | Calls a tool, records it for coverage, returns the joined text parts            |
+| `harness.raw(name, args)`  | The same, returning the whole result — for a tool that answers with an image    |
 | `harness.confirmed(…)`     | Drives **both halves** of the two-call token, for the no-dialog fallback path   |
 | `harness.prompts`          | Every message the server put in front of the user, in order                     |
 | `harness.stderr()`         | Everything the server wrote to stderr, including before the handshake completed |
