@@ -1,6 +1,6 @@
 {
   "name": "mcp-integration-harness",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0",
   "description": "Drive an MCP server over real stdio against a real backend, and prove every tool was exercised",
   "keywords": [
     "mcp",

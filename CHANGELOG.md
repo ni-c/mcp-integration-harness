@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- #region changelog -->
 
-## [0.1.0] - 2026-09-01
+## [0.1.0] - 2026-09-02
 
 First release. Extracted from four incompatible attempts at the same thing — a
 Python bootstrap plus three hand-rolled `.mjs` smoke scripts spread across four
