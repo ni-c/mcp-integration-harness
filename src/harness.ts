@@ -117,6 +117,12 @@ export interface LiveHarness {
    * Only meaningful on a harness started **without** `elicit`: with a dialog
    * available the server refuses to offer a token at all, which is the whole
    * point of the dialog. Use it to prove the fallback path still works.
+   *
+   * The first half is expected to **fail** — `mcp-approval` marks the prompt
+   * `isError`, because the operation was asked for and did not happen, and
+   * because a tool that declares an `outputSchema` may not answer without
+   * `structuredContent` unless the result is an error. The second half is
+   * expected to succeed, and its text is what comes back.
    */
   confirmed(name: string, args?: Record<string, unknown>): Promise<string>;
   /** Every message the server put in front of the user, in order. */
@@ -234,10 +240,18 @@ export async function startServer(
     );
   }
 
-  const raw = async (
+  /**
+   * The call itself: coverage bookkeeping, the transport, the framing check.
+   *
+   * Separate from {@link raw} because one caller has no expectation to state.
+   * `confirmed()` drives a path whose first half is an error result on a
+   * current `mcp-approval` and was not on an older one, and neither branch of
+   * `expectError` describes "I am about to read a token out of this, and if it
+   * is not there I have a better sentence than either".
+   */
+  const invoke = async (
     name: string,
-    args: Record<string, unknown> = {},
-    callOptions: CallOptions = {}
+    args: Record<string, unknown>
   ): Promise<ToolResult> => {
     called.add(name);
     let result: ToolResult;
@@ -261,6 +275,16 @@ export async function startServer(
           'where no hook can see it. stdout belongs to the transport.'
       );
     }
+    assertFramingIntact(`calling ${name}`);
+    return result;
+  };
+
+  const raw = async (
+    name: string,
+    args: Record<string, unknown> = {},
+    callOptions: CallOptions = {}
+  ): Promise<ToolResult> => {
+    const result = await invoke(name, args);
     const expectation = callOptions.expectError ?? false;
     const wantFailure = expectation !== false;
     const failed = result.isError === true;
@@ -289,7 +313,6 @@ export async function startServer(
           `Got: ${text.slice(0, 500)}`
       );
     }
-    assertFramingIntact(`calling ${name}`);
     return result;
   };
 
@@ -327,7 +350,11 @@ export async function startServer(
     called,
     stderr: () => errors.join(''),
     confirmed: async (name, args = {}) => {
-      const first = await call(name, args);
+      // `invoke`, not `call`: the first half is an error result — the prompt
+      // says the operation did not happen — and asserting on that here would
+      // replace `tokenOf`'s sentence, which names the real mistake (calling
+      // this on a harness started *with* `elicit`), with a generic one.
+      const first = textOf(await invoke(name, args));
       return call(name, { ...args, confirm_token: tokenOf(first) });
     },
     close: async () => {

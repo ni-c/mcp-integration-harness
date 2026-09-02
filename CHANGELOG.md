@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ToolResult.structuredContent`, so a suite can assert on the machine-readable
   half of an answer instead of parsing it back out of the text block.
 
+### Fixed
+
+- `confirmed()` no longer asserts anything about the first half's `isError`.
+  From `mcp-approval` 0.8.0 the fallback prompt is an error result — it has to
+  be, or a guarded tool that declares an `outputSchema` cannot answer with it at
+  all — and asserting either way would tie this library to one version of that
+  one. `tokenOf` decides whether the call went as intended, and its message
+  names the mistake that actually causes this (calling `confirmed()` on a
+  harness started **with** `elicit`).
+
 ## [0.2.0] - 2026-09-02
 
 ### Fixed
