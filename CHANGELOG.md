@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- #region changelog -->
 
+## [Unreleased]
+
+### Added
+
+- `expectEveryToolDeclaresOutputSchema` and `outputSchemaCoverage`: the same
+  three-way check as the tool-coverage gate, applied to what a server says it
+  returns. A tool that declares no `outputSchema` fails unless it carries a
+  written reason, and a schema whose root is not an object fails outright —
+  a 2025-era client is served that schema rewritten as `{result: …}`, so the
+  same tool would answer in two shapes depending on who asked.
+
+  It checks presence, not conformance, on purpose: the SDK validates
+  `structuredContent` against the advertised schema server-side, so a wrong
+  schema already fails the call and every ordinary assertion in a suite is
+  a schema-against-reality check.
+
+- `ToolResult.structuredContent`, so a suite can assert on the machine-readable
+  half of an answer instead of parsing it back out of the text block.
+
+### Fixed
+
+- `confirmed()` no longer asserts anything about the first half's `isError`.
+  From `mcp-approval` 0.8.0 the fallback prompt is an error result — it has to
+  be, or a guarded tool that declares an `outputSchema` cannot answer with it at
+  all — and asserting either way would tie this library to one version of that
+  one. `tokenOf` decides whether the call went as intended, and its message
+  names the mistake that actually causes this (calling `confirmed()` on a
+  harness started **with** `elicit`).
+
 ## [0.2.0] - 2026-09-02
 
 ### Fixed

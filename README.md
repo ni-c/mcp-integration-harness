@@ -75,6 +75,34 @@ It fails in three directions, not one:
 All three are reported together, so a fourteen-repository rollout is one
 afternoon rather than fourteen CI rounds.
 
+## `expectEveryToolDeclaresOutputSchema`
+
+The same shape of check, one level up: not "was this tool called" but "does it
+say what it returns".
+
+```ts
+const { tools } = await harness.client.listTools();
+expectEveryToolDeclaresOutputSchema(tools, {
+  call_tool: "forwards a child server's result; the shape is the child's",
+});
+```
+
+It checks **presence**, and deliberately not conformance. A server that declares
+an `outputSchema` and then answers with something else never gets that answer
+onto the wire — the SDK validates `structuredContent` against the advertised
+schema server-side and turns a mismatch into a failed call. So every ordinary
+assertion in your suite is already a schema-against-reality check, and a
+validator in here would only re-examine data that could not have arrived if it
+were wrong.
+
+The one thing it does check about the schema itself is that its root is an
+object. SEP-2106 lets an output schema describe an array or a scalar, but a
+2025-era client is served that same tool with the schema rewritten to
+`{result: …}` — so a tool with a non-object root answers in two different shapes
+depending on who asked. A list is `{ items: [...] }`.
+
+Exemptions are a `Record<tool, reason>` and rot in the same three directions.
+
 ## `assertLoopback`
 
 The guard that matters more than the tests it protects.
@@ -104,19 +132,21 @@ would otherwise run your suite as you. Those names are blanked explicitly.
 
 ## API
 
-| Export                     | What it does                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| `startServer(options)`     | Spawns `dist/index.js` over real stdio and returns a `LiveHarness`              |
-| `harness.call(name, args)` | Calls a tool, records it for coverage, returns the joined text parts            |
-| `harness.raw(name, args)`  | The same, returning the whole result — for a tool that answers with an image    |
-| `harness.confirmed(…)`     | Drives **both halves** of the two-call token, for the no-dialog fallback path   |
-| `harness.prompts`          | Every message the server put in front of the user, in order                     |
-| `harness.stderr()`         | Everything the server wrote to stderr, including before the handshake completed |
-| `expectEveryToolExercised` | The three-way coverage assertion above                                          |
-| `toolCoverage`             | The same comparison without asserting, for printing the numbers                 |
-| `assertLoopback(url)`      | Throws unless the URL is on this machine                                        |
-| `waitForHttp(url, opts)`   | Polls until an HTTP backend is ready, and says what the last attempt got        |
-| `waitForTcp(host, port)`   | The same for a backend that is not HTTP — IMAP, SMTP — optionally on a greeting |
+| Export                                | What it does                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `startServer(options)`                | Spawns `dist/index.js` over real stdio and returns a `LiveHarness`              |
+| `harness.call(name, args)`            | Calls a tool, records it for coverage, returns the joined text parts            |
+| `harness.raw(name, args)`             | The same, returning the whole result — for a tool that answers with an image    |
+| `harness.confirmed(…)`                | Drives **both halves** of the two-call token, for the no-dialog fallback path   |
+| `harness.prompts`                     | Every message the server put in front of the user, in order                     |
+| `harness.stderr()`                    | Everything the server wrote to stderr, including before the handshake completed |
+| `expectEveryToolExercised`            | The three-way coverage assertion above                                          |
+| `toolCoverage`                        | The same comparison without asserting, for printing the numbers                 |
+| `expectEveryToolDeclaresOutputSchema` | Every advertised tool declares an output schema with an object root             |
+| `outputSchemaCoverage`                | The same comparison without asserting                                           |
+| `assertLoopback(url)`                 | Throws unless the URL is on this machine                                        |
+| `waitForHttp(url, opts)`              | Polls until an HTTP backend is ready, and says what the last attempt got        |
+| `waitForTcp(host, port)`              | The same for a backend that is not HTTP — IMAP, SMTP — optionally on a greeting |
 
 `elicit: 'accept' | 'decline' | 'cancel'` makes the harness declare the
 elicitation capability and answer the dialog, which is the path a real client

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { expectEveryToolExercised, toolCoverage } from '../src/coverage.js';
+import {
+  expectEveryToolDeclaresOutputSchema,
+  expectEveryToolExercised,
+  outputSchemaCoverage,
+  toolCoverage,
+} from '../src/coverage.js';
 
 const ALL = [
   'list_things',
@@ -97,5 +102,97 @@ describe('expectEveryToolExercised', () => {
 
   it('treats an omitted skip map as an empty one', () => {
     expect(() => expectEveryToolExercised(ran(...ALL), ALL)).not.toThrow();
+  });
+});
+
+const OBJECT_SCHEMA = {
+  type: 'object',
+  properties: { count: { type: 'number' } },
+};
+
+const ADVERTISED = [
+  { name: 'list_things', outputSchema: OBJECT_SCHEMA },
+  { name: 'create_thing', outputSchema: OBJECT_SCHEMA },
+  { name: 'call_tool' },
+] as const;
+
+describe('the output-schema report', () => {
+  it('counts what declares one, what is exempt and what is missing', () => {
+    const report = outputSchemaCoverage(ADVERTISED, {
+      call_tool: "forwards a child server's result; the shape is the child's",
+    });
+    expect(report).toEqual({
+      declared: ['create_thing', 'list_things'],
+      exempt: ['call_tool'],
+      missing: [],
+      staleReasons: [],
+      unknownReasons: [],
+      nonObjectRoot: [],
+    });
+  });
+});
+
+describe('expectEveryToolDeclaresOutputSchema', () => {
+  it('passes when every tool declares one or has a reason', () => {
+    expect(() =>
+      expectEveryToolDeclaresOutputSchema(ADVERTISED, {
+        call_tool: "forwards a child server's result; the shape is the child's",
+      })
+    ).not.toThrow();
+  });
+
+  it('names the tools that declare nothing', () => {
+    expect(() => expectEveryToolDeclaresOutputSchema(ADVERTISED)).toThrow(
+      /declare no outputSchema: call_tool/
+    );
+  });
+
+  it('rejects a non-object root, which answers in two shapes', () => {
+    expect(() =>
+      expectEveryToolDeclaresOutputSchema([
+        { name: 'list_things', outputSchema: { type: 'array', items: {} } },
+      ])
+    ).toThrow(/non-object root: list_things/);
+  });
+
+  it('rejects an outputSchema that is not a schema at all', () => {
+    expect(() =>
+      expectEveryToolDeclaresOutputSchema([
+        { name: 'list_things', outputSchema: true },
+      ])
+    ).toThrow(/non-object root/);
+  });
+
+  it('reports a stale reason and one that outlived its tool together', () => {
+    let message = '';
+    try {
+      expectEveryToolDeclaresOutputSchema(ADVERTISED, {
+        create_thing: 'exempt but declares one',
+        gone_tool: 'no longer exists',
+        call_tool: "forwards a child server's result",
+      });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain('declare one after all');
+    expect(message).toContain('no longer exists');
+  });
+
+  it('leads with the numbers, because they are the report', () => {
+    let message = '';
+    try {
+      expectEveryToolDeclaresOutputSchema(ADVERTISED);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(
+      /^2 of 3 tools declare an output schema, 0 exempt\./
+    );
+  });
+
+  it('treats an omitted exemption map as an empty one', () => {
+    expect(() =>
+      expectEveryToolDeclaresOutputSchema(ADVERTISED.slice(0, 2))
+    ).not.toThrow();
   });
 });
