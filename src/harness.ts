@@ -69,6 +69,17 @@ export interface CallOptions {
 
 export interface ToolResult {
   content?: { type: string; text?: string; mimeType?: string; data?: string }[];
+  /**
+   * The machine-readable half of an answer, for a tool that declares an
+   * `outputSchema`.
+   *
+   * `unknown` rather than a shape, because the shape is the server's to declare
+   * and the suite's to assert. Worth knowing: a value that reaches here has
+   * already been validated against the advertised schema — the SDK does that
+   * server-side and turns a mismatch into a failed call — so a test that reads
+   * this field is checking *which* data came back, not whether it conformed.
+   */
+  structuredContent?: unknown;
   isError?: boolean;
 }
 

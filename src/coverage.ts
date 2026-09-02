@@ -108,3 +108,136 @@ export function expectEveryToolExercised(
     );
   }
 }
+
+/**
+ * One entry of `tools/list`, as much of it as this check reads.
+ *
+ * Structural rather than the SDK's `Tool`, like {@link expectEveryToolExercised}
+ * takes a `Pick<LiveHarness, …>`: the result of `client.listTools()` satisfies it
+ * as it comes, and the library stays free of a type-only import from a package it
+ * only peer-depends on.
+ */
+export interface AdvertisedTool {
+  name: string;
+  outputSchema?: unknown;
+}
+
+export interface OutputSchemaReport {
+  declared: readonly string[];
+  exempt: readonly string[];
+  /** Advertised without an `outputSchema`, and not exempt. */
+  missing: readonly string[];
+  /** Exempt, but declares one after all — the reason is stale. */
+  staleReasons: readonly string[];
+  /** Exempt, but no longer a tool — the reason outlived its tool. */
+  unknownReasons: readonly string[];
+  /** Declared with a root that is not `"object"`. */
+  nonObjectRoot: readonly string[];
+}
+
+/** Whether a value is a JSON Schema whose instance root is an object. */
+function hasObjectRoot(schema: unknown): boolean {
+  if (typeof schema !== 'object' || schema === null) return false;
+  return (schema as { type?: unknown }).type === 'object';
+}
+
+/**
+ * Compares the advertised tools against the rule, without asserting.
+ *
+ * Separate from the assertion for the reason {@link toolCoverage} is: "62 of 62
+ * tools declare an output schema" belongs in a CI log on a green run too.
+ */
+export function outputSchemaCoverage(
+  tools: readonly AdvertisedTool[],
+  exempt: SkipReasons = {}
+): OutputSchemaReport {
+  const names = new Set(tools.map((tool) => tool.name));
+  const reasons = Object.keys(exempt);
+  const withSchema = tools.filter((tool) => tool.outputSchema !== undefined);
+  return {
+    declared: withSchema.map((tool) => tool.name).sort(),
+    exempt: reasons.sort(),
+    missing: tools
+      .filter(
+        (tool) => tool.outputSchema === undefined && !(tool.name in exempt)
+      )
+      .map((tool) => tool.name)
+      .sort(),
+    staleReasons: withSchema
+      .filter((tool) => tool.name in exempt)
+      .map((tool) => tool.name)
+      .sort(),
+    unknownReasons: reasons.filter((name) => !names.has(name)).sort(),
+    nonObjectRoot: withSchema
+      .filter((tool) => !hasObjectRoot(tool.outputSchema))
+      .map((tool) => tool.name)
+      .sort(),
+  };
+}
+
+/**
+ * Fails unless every advertised tool declares an output schema with an object
+ * root.
+ *
+ * The presence half only. What the schema *says* needs no check here: a server
+ * that declares an `outputSchema` and then answers with something else never
+ * gets that answer past its own SDK, which validates `structuredContent`
+ * against the advertised schema before it goes on the wire and turns a mismatch
+ * into a failed call. So every ordinary assertion in the suite is already a
+ * schema-against-reality check, and a validator in here would only re-examine
+ * data that could not have arrived if it were wrong.
+ *
+ * The object root is checked, though, and is not pedantry. SEP-2106 lets an
+ * output schema describe an array or a scalar, but a 2025-era client is served
+ * that same tool with the schema rewritten to `{result: …}` — so a tool with a
+ * non-object root answers in two different shapes depending on who asked. A
+ * list is `{ items: [...] }`.
+ *
+ * Exemptions take a written reason and rot in the same three directions
+ * {@link expectEveryToolExercised} guards against. The one that has earned its
+ * place so far:
+ *
+ *   call_tool: 'forwards a child server's result; the shape is the child's'
+ */
+export function expectEveryToolDeclaresOutputSchema(
+  tools: readonly AdvertisedTool[],
+  exempt: SkipReasons = {}
+): void {
+  const report = outputSchemaCoverage(tools, exempt);
+  const problems: string[] = [];
+
+  if (report.missing.length > 0) {
+    problems.push(
+      `${report.missing.length} tool(s) declare no outputSchema: ` +
+        `${report.missing.join(', ')}. Declare one and return structuredContent, ` +
+        'or give each a reason saying why the shape is not this server to state.'
+    );
+  }
+  if (report.staleReasons.length > 0) {
+    problems.push(
+      `${report.staleReasons.length} exempt tool(s) declare one after all: ` +
+        `${report.staleReasons.join(', ')}. Remove the reason — it is no longer true.`
+    );
+  }
+  if (report.unknownReasons.length > 0) {
+    problems.push(
+      `${report.unknownReasons.length} reason(s) name a tool that no longer ` +
+        `exists: ${report.unknownReasons.join(', ')}.`
+    );
+  }
+  if (report.nonObjectRoot.length > 0) {
+    problems.push(
+      `${report.nonObjectRoot.length} tool(s) declare a non-object root: ` +
+        `${report.nonObjectRoot.join(', ')}. A 2025-era client is served that ` +
+        'schema wrapped as {result: …}, so the answer has two shapes. Wrap the ' +
+        'value in an object — a list is { items: [...] }.'
+    );
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `${report.declared.length} of ${tools.length} tools declare an output ` +
+        `schema, ${report.exempt.length} exempt.\n\n${problems.join('\n\n')}`
+    );
+  }
+}

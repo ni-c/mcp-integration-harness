@@ -9,9 +9,13 @@ export {
 } from './harness.js';
 
 export {
+  expectEveryToolDeclaresOutputSchema,
   expectEveryToolExercised,
+  outputSchemaCoverage,
   toolCoverage,
+  type AdvertisedTool,
   type CoverageReport,
+  type OutputSchemaReport,
   type SkipReasons,
 } from './coverage.js';
 
