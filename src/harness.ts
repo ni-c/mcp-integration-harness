@@ -1,5 +1,10 @@
+import { tmpdir } from 'node:os';
+
 import { Client } from '@modelcontextprotocol/client';
-import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import {
+  DEFAULT_INHERITED_ENV_VARS,
+  StdioClientTransport,
+} from '@modelcontextprotocol/client/stdio';
 
 /**
  * Driving a built MCP server over real stdio, against a real backend.
@@ -25,8 +30,17 @@ export interface StartServerOptions {
    *
    * Deliberately not merged with `process.env`. A `WIKIJS_URL` left in a shell
    * is otherwise enough to point an integration run — deletes included — at
-   * whatever that variable happens to name. Nothing is inherited, so nothing
-   * can be inherited by accident.
+   * whatever that variable happens to name.
+   *
+   * "Nothing is inherited" needs enforcing rather than merely not asking for
+   * it: `StdioClientTransport` merges `getDefaultEnvironment()` under whatever
+   * it is given, which carries `HOME`, `LOGNAME`, `SHELL`, `TERM`, `USER` and
+   * on Windows the `APPDATA` family through from the parent. A server — or any
+   * dependency of one — that reads `~/.netrc`, `~/.npmrc` or a credential file
+   * under `os.homedir()` would then run the suite as the developer. Those names
+   * are blanked here, and `HOME` points at a temporary directory rather than
+   * being empty, because an empty `HOME` breaks tools in a way that reads like
+   * a bug in the server.
    */
   env: Record<string, string>;
   /**
@@ -40,8 +54,17 @@ export interface StartServerOptions {
 }
 
 export interface CallOptions {
-  /** Assert that the call fails. Refusals are behaviour worth pinning too. */
-  expectError?: boolean;
+  /**
+   * Assert that the call fails. Refusals are behaviour worth pinning too.
+   *
+   * `true` only asserts that *something* failed, which is weaker than it looks:
+   * a renamed parameter makes the schema reject the call, and a guard test
+   * written this way stays green while the guard it names is no longer reached.
+   * Pass a string or a `RegExp` to require the reason as well — the returned
+   * text has to contain it, or match it — and prefer that wherever the refusal
+   * is the point of the test.
+   */
+  expectError?: boolean | string | RegExp;
 }
 
 export interface ToolResult {
@@ -124,6 +147,7 @@ export async function startServer(
   const prompts: string[] = [];
   const called = new Set<string>();
   const errors: string[] = [];
+  const protocolErrors: Error[] = [];
 
   const client = new Client(
     { name: 'mcp-integration-harness', version: '0.1.0' },
@@ -142,11 +166,36 @@ export async function startServer(
     });
   }
 
+  // Out-of-band protocol failures. The transport reports a line that parses as
+  // JSON but is not a JSON-RPC message here — the `console.log(JSON.stringify(x))`
+  // that a server picks up from a dependency — and without a listener it is
+  // discarded, leaving a suite green while the framing this library exists to
+  // exercise is broken. Also catches era mismatches, unknown message ids and
+  // dropped inbound requests.
+  //
+  // The one case this does *not* reach is a line that is not JSON at all:
+  // `ReadBuffer.readMessage` swallows the SyntaxError inside the buffer, below
+  // any hook a client can install. Such a line without a trailing newline
+  // corrupts the next real message instead, which surfaces as a request
+  // timeout — see the hint in the failure below.
+  client.onerror = (error: Error) => {
+    protocolErrors.push(error);
+  };
+
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [entry],
-    // PATH only. See the comment on StartServerOptions.env.
-    env: { PATH: process.env.PATH ?? '', ...options.env },
+    // PATH only, and the SDK's inherit list explicitly blanked — it merges
+    // getDefaultEnvironment() underneath whatever it is handed. See the comment
+    // on StartServerOptions.env.
+    env: {
+      ...Object.fromEntries(
+        DEFAULT_INHERITED_ENV_VARS.map((name) => [name, ''])
+      ),
+      HOME: tmpdir(),
+      PATH: process.env.PATH ?? '',
+      ...options.env,
+    },
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     stderr: 'pipe',
   });
@@ -160,7 +209,9 @@ export async function startServer(
   });
 
   try {
-    await client.connect(transport);
+    await client.connect(transport, {
+      timeout: (options.timeoutSeconds ?? 30) * 1000,
+    });
   } catch (error) {
     // A server that dies during the handshake reports "Connection closed" and
     // nothing else, while the reason — a missing dist/, a config error, a
@@ -192,18 +243,42 @@ export async function startServer(
       throw new Error(
         `mcp-integration-harness: calling ${name} failed at the transport.\n` +
           `${String(error)}\n\nThe server's stderr so far:\n` +
-          `${errors.join('') || '(nothing)'}`
+          `${errors.join('') || '(nothing)'}\n\n` +
+          'If that stderr is empty and this was a timeout, suspect stdout: a ' +
+          'write there without a trailing newline is prepended to the next ' +
+          'JSON-RPC message, and the reply is discarded inside the read buffer ' +
+          'where no hook can see it. stdout belongs to the transport.'
       );
     }
+    const expectation = callOptions.expectError ?? false;
+    const wantFailure = expectation !== false;
     const failed = result.isError === true;
-    if (failed !== (callOptions.expectError ?? false)) {
-      const text = textOf(result);
+    const text = textOf(result);
+    if (failed !== wantFailure) {
       throw new Error(
-        callOptions.expectError
+        wantFailure
           ? `${name} was expected to fail and did not: ${text.slice(0, 500)}`
           : `${name} failed: ${text.slice(0, 500)}`
       );
     }
+    // A refusal that does not say why is a refusal that could have come from
+    // anywhere — the schema, a 500, a renamed argument. Where the caller named
+    // the reason, it has to be the reason.
+    if (typeof expectation === 'string' && !text.includes(expectation)) {
+      throw new Error(
+        `${name} failed as expected, but not for the stated reason.\n` +
+          `Expected the message to contain: ${expectation}\n` +
+          `Got: ${text.slice(0, 500)}`
+      );
+    }
+    if (expectation instanceof RegExp && !expectation.test(text)) {
+      throw new Error(
+        `${name} failed as expected, but not for the stated reason.\n` +
+          `Expected the message to match: ${String(expectation)}\n` +
+          `Got: ${text.slice(0, 500)}`
+      );
+    }
+    assertFramingIntact(`calling ${name}`);
     return result;
   };
 
@@ -212,6 +287,26 @@ export async function startServer(
     args: Record<string, unknown> = {},
     callOptions: CallOptions = {}
   ): Promise<string> => textOf(await raw(name, args, callOptions));
+
+  /**
+   * Fails the run if the transport reported anything out of band.
+   *
+   * Checked after each call rather than only at the end, so the failure names
+   * the tool whose turn produced it instead of the whole suite.
+   */
+  function assertFramingIntact(during: string): void {
+    if (protocolErrors.length === 0) return;
+    const reported = protocolErrors.map((error) => error.message).join('\n');
+    protocolErrors.length = 0;
+    throw new Error(
+      `mcp-integration-harness: the server broke the stdio framing while ${during}.\n` +
+        `${reported}\n\n` +
+        'Something reached stdout that is not a JSON-RPC message — a stray ' +
+        'console.log in the server or in one of its dependencies is the usual ' +
+        'cause. Route it to stderr.\n\n' +
+        `The server's stderr so far:\n${errors.join('') || '(nothing)'}`
+    );
+  }
 
   return {
     client,
@@ -226,6 +321,7 @@ export async function startServer(
     },
     close: async () => {
       await client.close();
+      assertFramingIntact('closing the session');
     },
   };
 }

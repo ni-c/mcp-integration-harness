@@ -44,6 +44,15 @@ Four things are additionally untouched by any in-process test: `src/index.ts`,
 elicitation across a **process boundary**. This spawns the built artifact, so
 all four are on the path.
 
+On framing, be precise about what that buys. Anything the transport reports out
+of band — a line that parses as JSON but is not a JSON-RPC message, an era
+mismatch, an unknown message id — fails the run and names the tool it happened
+on. A line that is not JSON **at all** is swallowed inside the SDK's read
+buffer, below any hook a client can install; if it also lacks a trailing
+newline it corrupts the next real message, which surfaces as a request timeout
+with a hint pointing at stdout. Owning stdout outright would need a transport of
+our own, and that is not what this is yet.
+
 ## `expectEveryToolExercised`
 
 The part worth copying even if you write the rest yourself.
@@ -82,9 +91,16 @@ production". Hosts are compared numerically via
 `[::ffff:127.0.0.1]` and `localhost.` count and `127.example.com` — a hostname
 anybody can register — does not.
 
-`startServer` is the same idea as a property: the child gets `PATH` and the
-variables you passed. Nothing is inherited, so nothing can be inherited by
-accident.
+`startServer` is the same idea as a property: the child gets `PATH`, a `HOME`
+pointing at a temporary directory, and the variables you passed. Nothing else is
+inherited, so nothing else can be inherited by accident.
+
+That needs enforcing rather than merely not asking for it. `StdioClientTransport`
+merges `getDefaultEnvironment()` _underneath_ whatever it is handed, which
+carries `HOME`, `LOGNAME`, `SHELL`, `TERM`, `USER` — and on Windows the
+`APPDATA` family — through from the parent. A server, or any dependency of one,
+that reads `~/.netrc`, `~/.npmrc` or a credential file under `os.homedir()`
+would otherwise run your suite as you. Those names are blanked explicitly.
 
 ## API
 

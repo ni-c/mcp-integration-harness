@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- #region changelog -->
 
+## [0.2.0] - 2026-09-02
+
+### Fixed
+
+- The harness now fails a run when the server breaks the stdio framing. A line
+  that parses as JSON but is not a JSON-RPC message reaches the client's
+  `onerror`, and with no listener it was discarded — so a stray
+  `console.log(JSON.stringify(x))` in a server or one of its dependencies left
+  every suite in this family green while the framing this library exists to
+  exercise was broken. Also catches era mismatches, unknown message ids and
+  dropped inbound requests. Checked after each call, so the failure names the
+  tool it happened on.
+
+  The remaining gap is stated in the README rather than papered over: a line
+  that is not JSON **at all** is swallowed inside the SDK's read buffer, below
+  any hook a client can install. Without a trailing newline it corrupts the next
+  real message instead, which surfaces as a request timeout — the timeout
+  message now says to suspect stdout.
+
+- `timeoutSeconds` is read. It was declared, documented as "default 30", and
+  never passed to `connect`, so the SDK's own 60 seconds applied in every case.
+  A repo with a slow-starting backend that raised it kept failing at 60; one
+  that lowered it kept waiting a minute per attempt.
+
+- The names `StdioClientTransport` merges in underneath the given environment —
+  `HOME`, `LOGNAME`, `SHELL`, `TERM`, `USER`, and the `APPDATA` family on
+  Windows — are now blanked explicitly, with `HOME` pointed at a temporary
+  directory. "Nothing is inherited" was the documented property and the reason
+  to trust the harness with destructive integration runs; it needed enforcing
+  rather than merely not being asked for. The test that appeared to prove it
+  used a variable that is not on the SDK's inherit list, so it passed either
+  way.
+
+### Added
+
+- `expectError` accepts a string or a `RegExp` as well as `true`. `true` alone
+  asserts that _something_ failed, which is weaker than it reads: a renamed
+  parameter makes the schema reject the call, and a guard test written that way
+  stays green while the guard it names is never reached. Where the refusal is
+  the point of the test, name the reason.
+
 ## [0.1.0] - 2026-09-02
 
 First release. Extracted from four incompatible attempts at the same thing — a
