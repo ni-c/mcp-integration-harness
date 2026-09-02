@@ -31,6 +31,24 @@ if (process.env.TINY_SILENT !== '1') {
   );
 }
 
+// The mistake this fixture exists to reproduce: a server — or a dependency of
+// one — writing to stdout, which belongs to the transport. Valid JSON that is
+// not a JSON-RPC message reaches the client's onerror; the harness has to
+// report it rather than let the suite stay green.
+if (process.env.TINY_POLLUTE_STDOUT === '1') {
+  process.stdout.write(`${JSON.stringify({ hello: 'from a dependency' })}\n`);
+}
+
+// What the server sees of the parent's environment, so a test can assert on
+// the names the SDK merges in underneath what startServer passes.
+if (process.env.TINY_REPORT_ENV === '1') {
+  console.error(
+    `tiny: env HOME=${process.env.HOME || '(unset)'} USER=${
+      process.env.USER || '(unset)'
+    } SHELL=${process.env.SHELL || '(unset)'}`
+  );
+}
+
 server.registerTool(
   'say_hello',
   {
@@ -132,5 +150,14 @@ server.registerTool(
   },
   () => ({ content: [{ type: 'text', text: 'no' }], isError: true })
 );
+
+// Delays the handshake, so a test can show that the timeout the caller asked
+// for is the one that applies. The option was declared and documented for
+// months without ever being read.
+if (process.env.TINY_SLOW_START_MS !== undefined) {
+  await new Promise((resolve) =>
+    setTimeout(resolve, Number(process.env.TINY_SLOW_START_MS))
+  );
+}
 
 await server.connect(new StdioServerTransport());

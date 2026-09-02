@@ -38,6 +38,46 @@ describe('driving a server over real stdio', () => {
     }
   });
 
+  it('blanks the names the SDK would otherwise inherit', async () => {
+    // "Nothing is inherited" needed enforcing, not just not asking for it:
+    // StdioClientTransport merges getDefaultEnvironment() *underneath* whatever
+    // it is handed, and that carries HOME, LOGNAME, SHELL, TERM and USER
+    // through from the parent. A server whose dependency reads ~/.netrc or a
+    // credential file under os.homedir() would run the suite as the developer.
+    //
+    // The previous test cannot see this: TINY_GREETING is not on that list, so
+    // it passed whether nothing was inherited or those five were.
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_REPORT_ENV: '1' },
+    });
+    await harness.call('say_hello');
+    const seen = harness.stderr();
+    expect(seen).toContain('USER=(unset)');
+    expect(seen).toContain('SHELL=(unset)');
+    // HOME is pointed at a temp directory rather than blanked: an empty HOME
+    // breaks tools in a way that reads like a bug in the server under test.
+    expect(seen).toMatch(/HOME=(?!\(unset\))\S/);
+    expect(seen).not.toContain(`HOME=${process.env.HOME ?? '/nonexistent'} `);
+    await harness.close();
+  });
+
+  it('fails the run when the server writes to stdout', async () => {
+    // stdout belongs to the transport. A line that parses as JSON but is not a
+    // JSON-RPC message — the shape a stray console.log(JSON.stringify(x))
+    // produces — reaches the client's onerror and used to be discarded, which
+    // left every suite in this family green while the framing this library
+    // exists to exercise was broken.
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_GREETING: 'noisy', TINY_POLLUTE_STDOUT: '1' },
+    });
+    await expect(harness.call('say_hello')).rejects.toThrow(
+      /broke the stdio framing.*console\.log/s
+    );
+    await harness.close().catch(() => undefined);
+  });
+
   it('keeps stderr, including what was written before the handshake', async () => {
     const harness = await startServer({
       entry: TINY,
@@ -149,6 +189,53 @@ describe('driving a server over real stdio', () => {
     expect(await harness.call('always_fails', {}, { expectError: true })).toBe(
       'no'
     );
+    await harness.close();
+  });
+
+  it('applies the handshake timeout it was given', async () => {
+    // timeoutSeconds was declared, documented as "default 30", and never read:
+    // connect() was called without options, so the SDK's own 60 seconds
+    // applied. A repo with a slow-starting backend that raised it kept failing
+    // at 60; one that lowered it kept waiting a minute per attempt.
+    await expect(
+      startServer({
+        entry: TINY,
+        env: { TINY_SILENT: '1', TINY_SLOW_START_MS: '4000' },
+        timeoutSeconds: 1,
+      })
+    ).rejects.toThrow(/did not start/);
+  });
+
+  it('requires the stated reason, not merely a failure', async () => {
+    // `expectError: true` alone says only that *something* failed. A renamed
+    // parameter makes the schema reject the call, and a guard test written that
+    // way stays green while the guard it names is never reached — twenty-seven
+    // places in this fleet are written that way, several of them over SSRF
+    // guards.
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_GREETING: 'x' },
+    });
+    await expect(
+      harness.call('always_fails', {}, { expectError: 'read-only mode' })
+    ).rejects.toThrow(/not for the stated reason/);
+    await expect(
+      harness.call('always_fails', {}, { expectError: /read-only mode/ })
+    ).rejects.toThrow(/not for the stated reason/);
+    await harness.close();
+  });
+
+  it('accepts a string or a pattern as the stated reason', async () => {
+    const harness = await startServer({
+      entry: TINY,
+      env: { TINY_GREETING: 'x' },
+    });
+    const text = await harness.call('always_fails', {}, { expectError: true });
+    // Whatever the fixture actually says, both forms of the assertion have to
+    // agree with it — that is the whole contract.
+    const word = text.split(/\s+/).find((part) => part.length > 3) ?? '';
+    await harness.call('always_fails', {}, { expectError: word });
+    await harness.call('always_fails', {}, { expectError: new RegExp(word) });
     await harness.close();
   });
 
