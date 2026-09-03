@@ -103,6 +103,34 @@ depending on who asked. A list is `{ items: [...] }`.
 
 Exemptions are a `Record<tool, reason>` and rot in the same three directions.
 
+## `expectPortableToolSchemas`
+
+Whether the schemas a server advertises are ones every client can read.
+
+```ts
+const { tools } = await harness.client.listTools();
+expectPortableToolSchemas(tools);
+```
+
+Four spellings are legal JSON Schema and still get a tool refused or silently
+stripped by some MCP clients:
+
+| Written as                   | Comes from                           | Write instead                           |
+| ---------------------------- | ------------------------------------ | --------------------------------------- |
+| `"additionalProperties": {}` | `z.looseObject`, `.catchall()`       | `.meta({ additionalProperties: true })` |
+| `"anything": {}`             | `z.unknown()`, `z.any()`             | the type the value really has           |
+| `"type": ["string", "null"]` | `z.string().nullable()` from zod 4.5 | `.describe()` **before** `.nullable()`  |
+| `"$ref": "https://…"`        | a hand-written schema                | inline it, or `#/$defs/…`               |
+
+All four are spellings rather than contracts: each has an equivalent form that
+says the same thing to a validator. Which is why this check takes no exemption
+map — a reason could only ever read "not fixed yet".
+
+It runs against the schema **as it goes on the wire**, which is the only place
+it can run: zod emitted `anyOf` for a nullable string up to 4.4 and a `type`
+array from 4.5 on, so the same source produces a portable schema or a
+non-portable one depending on a patch release of a dependency.
+
 ## `assertLoopback`
 
 The guard that matters more than the tests it protects.
@@ -144,6 +172,8 @@ would otherwise run your suite as you. Those names are blanked explicitly.
 | `toolCoverage`                        | The same comparison without asserting, for printing the numbers                 |
 | `expectEveryToolDeclaresOutputSchema` | Every advertised tool declares an output schema with an object root             |
 | `outputSchemaCoverage`                | The same comparison without asserting                                           |
+| `expectPortableToolSchemas`           | Every advertised schema avoids the four spellings clients mishandle             |
+| `schemaPortability`                   | The same lint without asserting, returning the findings                         |
 | `assertLoopback(url)`                 | Throws unless the URL is on this machine                                        |
 | `waitForHttp(url, opts)`              | Polls until an HTTP backend is ready, and says what the last attempt got        |
 | `waitForTcp(host, port)`              | The same for a backend that is not HTTP — IMAP, SMTP — optionally on a greeting |
