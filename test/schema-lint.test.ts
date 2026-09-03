@@ -156,6 +156,8 @@ describe('schemaPortability', () => {
         outputSchema: {
           type: 'object',
           properties: {
+            // `then` here is the JSON Schema keyword, not a thenable.
+            // oxlint-disable-next-line no-thenable
             a: { if: { const: 1 }, then: { type: 'string' } },
             b: { if: { const: 1 } },
           },
