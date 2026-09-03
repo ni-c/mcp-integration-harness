@@ -129,6 +129,65 @@ describe('schemaPortability', () => {
     ).toEqual([]);
   });
 
+  it('reads the tuple form of `items`, which a hand-written schema still uses', () => {
+    const findings = schemaPortability([
+      {
+        name: 'get_pair',
+        outputSchema: {
+          type: 'object',
+          properties: {
+            pair: {
+              type: 'array',
+              items: [{ type: 'string' }, {}],
+            },
+          },
+        },
+      },
+    ]);
+    expect(findings.map((f) => `${f.rule} ${f.path}`)).toEqual([
+      'untyped-schema outputSchema.properties.pair.items[1]',
+    ]);
+  });
+
+  it('counts `if` as constraining only with a branch beside it', () => {
+    const withBranch = schemaPortability([
+      {
+        name: 'get_thing',
+        outputSchema: {
+          type: 'object',
+          properties: {
+            a: { if: { const: 1 }, then: { type: 'string' } },
+            b: { if: { const: 1 } },
+          },
+        },
+      },
+    ]);
+    expect(withBranch.map((f) => f.path)).toEqual([
+      'outputSchema.properties.b',
+    ]);
+  });
+
+  it('walks past a child that is not a schema at all', () => {
+    expect(
+      schemaPortability([
+        {
+          name: 'get_thing',
+          outputSchema: { type: 'object', properties: { a: null } },
+        },
+      ])
+    ).toEqual([]);
+  });
+
+  it('stops at the depth limit rather than following a schema down forever', () => {
+    let node: Record<string, unknown> = {};
+    for (let i = 0; i < 70; i += 1) {
+      node = { type: 'object', properties: { next: node } };
+    }
+    expect(
+      schemaPortability([{ name: 'get_thing', outputSchema: node }])
+    ).toEqual([]);
+  });
+
   it('reads a tool that declares neither schema', () => {
     expect(schemaPortability([{ name: 'ping' }])).toEqual([]);
   });
