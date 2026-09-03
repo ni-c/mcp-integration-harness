@@ -19,6 +19,14 @@ export {
   type SkipReasons,
 } from './coverage.js';
 
+export {
+  expectPortableToolSchemas,
+  schemaPortability,
+  type SchemaBearingTool,
+  type SchemaFinding,
+  type SchemaLintRule,
+} from './schema-lint.js';
+
 export { assertLoopback, assertLoopbackHost } from './loopback.js';
 
 export {

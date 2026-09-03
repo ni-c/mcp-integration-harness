@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- #region changelog -->
 
+## [0.4.0] - 2026-09-03
+
+### Added
+
+- `expectPortableToolSchemas` and `schemaPortability`: a lint over the schemas a
+  server advertises, for four spellings that are legal JSON Schema and still get
+  a tool refused or silently stripped by some MCP clients — `{}` in a schema
+  position (what zod writes for `looseObject`, `catchall` and `z.unknown()`), a
+  bare `true`/`false` where a schema object belongs, `type` as an array, and a
+  `$ref` that leaves the document.
+
+  No exemption map, unlike the coverage checks. Those excuse what a backend
+  cannot provide; here every finding has an equivalent spelling that says the
+  same thing to a validator, so a reason could only ever read "not fixed yet".
+
+  It runs against the schema as it goes on the wire, which is the only place it
+  can: zod emitted `anyOf` for a nullable string up to 4.4 and a `type` array
+  from 4.5 on, so identical source is portable or not depending on a patch
+  release of a dependency.
+
 ## [0.3.0] - 2026-09-02
 
 ### Added
