@@ -1,8 +1,13 @@
 # mcp-integration-harness
 
+<!-- badges: start -->
+
+[![CI](https://img.shields.io/github/actions/workflow/status/ni-c/mcp-integration-harness/ci.yml?branch=main&label=CI)](https://github.com/ni-c/mcp-integration-harness/actions/workflows/ci.yml)
+<a href="https://socket.dev/npm/package/mcp-integration-harness"><img src="https://socket.dev/api/badge/npm/package/mcp-integration-harness" alt="Socket supply-chain report" height="20"></a>
+<br>
 [![npm version](https://img.shields.io/npm/v/mcp-integration-harness)](https://www.npmjs.com/package/mcp-integration-harness)
-[![node](https://img.shields.io/node/v/mcp-integration-harness)](https://nodejs.org)
-[![license](https://img.shields.io/npm/l/mcp-integration-harness)](LICENSE)
+[![sponsor](https://img.shields.io/badge/sponsor-ni--c-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/ni-c)
+<!-- badges: end -->
 
 Run your built [Model Context Protocol](https://modelcontextprotocol.io) server
 as a real process, against a real backend in Docker, and fail the build unless
