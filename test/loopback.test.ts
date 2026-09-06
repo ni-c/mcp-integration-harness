@@ -21,8 +21,8 @@ describe('the loopback guard', () => {
     // wiki people write in. An integration suite calls every tool, deletes
     // included. If this test ever goes green by being deleted, that is the
     // accident it was written to prevent.
-    expect(() => assertLoopback('https://wiki.roamsys.com')).toThrow(
-      /refusing to talk to wiki\.roamsys\.com/
+    expect(() => assertLoopback('https://wiki.example.com')).toThrow(
+      /refusing to talk to wiki\.example\.com/
     );
   });
 
@@ -61,7 +61,7 @@ describe('the loopback guard', () => {
     // The distinction the message exists for: a skipped test reports "nothing
     // to do here", which is the wrong sentence when the reason is "this was
     // pointed at production".
-    expect(() => assertLoopback('https://wiki.roamsys.com')).toThrow(
+    expect(() => assertLoopback('https://wiki.example.com')).toThrow(
       /may only ever talk to a throwaway backend on this machine/
     );
   });
@@ -74,8 +74,8 @@ describe('the host-only guard', () => {
     expect(() => assertLoopbackHost('127.0.0.1')).not.toThrow();
     expect(() => assertLoopbackHost('::1')).not.toThrow();
     expect(() => assertLoopbackHost('localhost')).not.toThrow();
-    expect(() => assertLoopbackHost('imap.roamsys.com')).toThrow(
-      /refusing to talk to imap\.roamsys\.com/
+    expect(() => assertLoopbackHost('imap.example.net')).toThrow(
+      /refusing to talk to imap\.example\.net/
     );
     expect(() => assertLoopbackHost('10.10.1.2')).toThrow(
       /refusing to talk to/

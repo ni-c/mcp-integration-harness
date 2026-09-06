@@ -73,7 +73,7 @@ describe('waiting for a backend', () => {
   it('refuses to poll anything that is not on this machine', async () => {
     // No request is made — the guard runs before the first fetch, so a
     // misconfigured URL cannot even reach out once.
-    await expect(waitForHttp('https://wiki.roamsys.com')).rejects.toThrow(
+    await expect(waitForHttp('https://wiki.example.com')).rejects.toThrow(
       /refusing to talk to/
     );
   });
@@ -190,7 +190,7 @@ describe('waiting for a plain TCP service', () => {
   }, 20_000);
 
   it('refuses a host that is not on this machine, before connecting', async () => {
-    await expect(waitForTcp('imap.roamsys.com', 143)).rejects.toThrow(
+    await expect(waitForTcp('imap.example.net', 143)).rejects.toThrow(
       /refusing to talk to/
     );
   });
