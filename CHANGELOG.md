@@ -19,7 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **mcp-approval 0.8.2.** A sealed dialog answer is single-use since 0.8.1: the same `requestState` presented again within its lifetime used to be accepted again, and with a resource key that is the same every time — a whole stream, a fixed set of targets — every replay landed. npm users on `^0.8.0` already had the fix; the Docker image is built from the lockfile and carried 0.8.0 until this release.
+- **mcp-approval 0.8.2** as the devDependency behind the fixture server
+  (0.7.1 before). A sealed dialog answer is single-use since 0.8.1, and 0.8.2
+  adds `orderedResourceKey`; neither changes what the harness does, but the
+  fixture now exercises the library the servers actually ship, and two tests
+  that assumed the older prompt was not an error result now say the current
+  thing.
 
 ## [0.4.0] - 2026-09-03
 
