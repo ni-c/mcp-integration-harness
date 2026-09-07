@@ -195,9 +195,15 @@ export async function startServer(
   // any hook a client can install. Such a line without a trailing newline
   // corrupts the next real message instead, which surfaces as a request
   // timeout — see the hint in the failure below.
-  client.onerror = (error: Error) => {
-    protocolErrors.push(error);
-  };
+  //
+  // The SDK's `Client` exposes this as a plain property — it is neither an
+  // `EventTarget` nor an `EventEmitter`, so there is no listener API to
+  // prefer. `Object.assign` installs the one handler the property can hold.
+  Object.assign(client, {
+    onerror: (error: Error) => {
+      protocolErrors.push(error);
+    },
+  });
 
   const transport = new StdioClientTransport({
     command: process.execPath,
@@ -236,7 +242,8 @@ export async function startServer(
     // the most common first failure of a new suite is also the least legible.
     throw new Error(
       `mcp-integration-harness: ${process.execPath} ${entry} did not start.\n` +
-        `${String(error)}\n\nIts stderr:\n${errors.join('') || '(nothing)'}`
+        `${String(error)}\n\nIts stderr:\n${errors.join('') || '(nothing)'}`,
+      { cause: error }
     );
   }
 
@@ -272,7 +279,8 @@ export async function startServer(
           'If that stderr is empty and this was a timeout, suspect stdout: a ' +
           'write there without a trailing newline is prepended to the next ' +
           'JSON-RPC message, and the reply is discarded inside the read buffer ' +
-          'where no hook can see it. stdout belongs to the transport.'
+          'where no hook can see it. stdout belongs to the transport.',
+        { cause: error }
       );
     }
     assertFramingIntact(`calling ${name}`);

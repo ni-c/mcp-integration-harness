@@ -18,8 +18,8 @@ describe('driving a server over real stdio', () => {
     });
     expect(await harness.call('say_hello')).toBe('hello world');
     expect(
-      (await harness.client.listTools()).tools.map((t) => t.name).sort()
-    ).toEqual([...ALL_TOOLS].sort());
+      (await harness.client.listTools()).tools.map((t) => t.name).toSorted()
+    ).toEqual(ALL_TOOLS.toSorted());
     await harness.close();
   });
 
@@ -332,7 +332,7 @@ describe('what was called', () => {
     await expect(
       harness.call('delete_thing', { id: 'x' }, { expectError: true })
     ).rejects.toThrow();
-    expect([...harness.called].sort()).toEqual([...ALL_TOOLS].sort());
+    expect([...harness.called].toSorted()).toEqual(ALL_TOOLS.toSorted());
     await harness.close();
   });
 });

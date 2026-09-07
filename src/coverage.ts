@@ -47,13 +47,13 @@ export function toolCoverage(
   const catalogue = new Set(allTools);
   const reasons = Object.keys(skipped);
   return {
-    called: [...harness.called].sort(),
-    skipped: reasons.sort(),
+    called: [...harness.called].toSorted(),
+    skipped: reasons.toSorted(),
     missing: allTools
       .filter((tool) => !harness.called.has(tool) && !(tool in skipped))
-      .sort(),
-    staleReasons: reasons.filter((tool) => harness.called.has(tool)).sort(),
-    unknownReasons: reasons.filter((tool) => !catalogue.has(tool)).sort(),
+      .toSorted(),
+    staleReasons: reasons.filter((tool) => harness.called.has(tool)).toSorted(),
+    unknownReasons: reasons.filter((tool) => !catalogue.has(tool)).toSorted(),
   };
 }
 
@@ -155,23 +155,23 @@ export function outputSchemaCoverage(
   const reasons = Object.keys(exempt);
   const withSchema = tools.filter((tool) => tool.outputSchema !== undefined);
   return {
-    declared: withSchema.map((tool) => tool.name).sort(),
-    exempt: reasons.sort(),
+    declared: withSchema.map((tool) => tool.name).toSorted(),
+    exempt: reasons.toSorted(),
     missing: tools
       .filter(
         (tool) => tool.outputSchema === undefined && !(tool.name in exempt)
       )
       .map((tool) => tool.name)
-      .sort(),
+      .toSorted(),
     staleReasons: withSchema
       .filter((tool) => tool.name in exempt)
       .map((tool) => tool.name)
-      .sort(),
-    unknownReasons: reasons.filter((name) => !names.has(name)).sort(),
+      .toSorted(),
+    unknownReasons: reasons.filter((name) => !names.has(name)).toSorted(),
     nonObjectRoot: withSchema
       .filter((tool) => !hasObjectRoot(tool.outputSchema))
       .map((tool) => tool.name)
-      .sort(),
+      .toSorted(),
   };
 }
 
