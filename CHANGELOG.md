@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- #region changelog -->
 
-## [Unreleased]
+## [0.4.1] - 2026-09-07
 
 ### Changed
 
@@ -17,7 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file nobody could open. `dist/**/*.js` is unchanged; the package is about a
   fifth smaller.
 
-[Unreleased]: https://github.com/ni-c/mcp-integration-harness/compare/v0.4.0...HEAD
+### Security
+
+- **mcp-approval 0.8.2** as the devDependency behind the fixture server
+  (0.7.1 before). A sealed dialog answer is single-use since 0.8.1, and 0.8.2
+  adds `orderedResourceKey`; neither changes what the harness does, but the
+  fixture now exercises the library the servers actually ship, and two tests
+  that assumed the older prompt was not an error result now say the current
+  thing.
 
 ## [0.4.0] - 2026-09-03
 
@@ -169,4 +176,5 @@ them calling all 62 tools of its server while always exiting 0.
 
 <!-- #endregion changelog -->
 
+[0.4.1]: https://github.com/ni-c/mcp-integration-harness/releases/tag/v0.4.1
 [0.1.0]: https://github.com/ni-c/mcp-integration-harness/releases/tag/v0.1.0

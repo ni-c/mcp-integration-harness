@@ -18,8 +18,8 @@ describe('driving a server over real stdio', () => {
     });
     expect(await harness.call('say_hello')).toBe('hello world');
     expect(
-      (await harness.client.listTools()).tools.map((t) => t.name).sort()
-    ).toEqual([...ALL_TOOLS].sort());
+      (await harness.client.listTools()).tools.map((t) => t.name).toSorted()
+    ).toEqual(ALL_TOOLS.toSorted());
     await harness.close();
   });
 
@@ -315,7 +315,13 @@ describe('getting past a confirmation', () => {
 
   it('extracts a token from a refusal', async () => {
     const harness = await startServer({ entry: TINY, env: {} });
-    const first = await harness.call('delete_thing', { id: 'd' });
+    // The prompt is an error result on a current mcp-approval: the operation
+    // was asked for and did not happen. The token is in its text all the same.
+    const first = await harness.call(
+      'delete_thing',
+      { id: 'd' },
+      { expectError: true }
+    );
     expect(tokenOf(first)).toMatch(/^[0-9a-f]+$/);
     await harness.close();
   });
@@ -329,10 +335,12 @@ describe('what was called', () => {
     await harness.call('always_fails', {}, { expectError: true });
     // A call that threw still counts as touched: the tool was reached, and the
     // coverage question is "did anything exercise this", not "did it pass".
-    await expect(
-      harness.call('delete_thing', { id: 'x' }, { expectError: true })
-    ).rejects.toThrow();
-    expect([...harness.called].sort()).toEqual([...ALL_TOOLS].sort());
+    // The prompt is an error result, and this call did not say it expected
+    // one, so the harness throws.
+    await expect(harness.call('delete_thing', { id: 'x' })).rejects.toThrow(
+      /failed/
+    );
+    expect([...harness.called].toSorted()).toEqual(ALL_TOOLS.toSorted());
     await harness.close();
   });
 });
