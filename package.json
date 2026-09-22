@@ -56,7 +56,7 @@
     "@modelcontextprotocol/core": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "@types/node": "^26.2.0",
-    "@vitest/coverage-v8": "5.0.0",
+    "@vitest/coverage-v8": "5.0.1",
     "mcp-approval": "^0.8.2",
     "oxlint": "^1.80.0",
     "prettier": "^3.6.0",
