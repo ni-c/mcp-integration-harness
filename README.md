@@ -191,7 +191,7 @@ started without `elicit`, and says so when it does not.
 
 ## Requirements
 
-Node 22 or newer, and `@modelcontextprotocol/client` 2.x as a peer. Both belong
+Node 24 or newer, and `@modelcontextprotocol/client` 2.x as a peer. Both belong
 in `devDependencies`: this is test infrastructure and has no business in a
 server's runtime tree.
 
